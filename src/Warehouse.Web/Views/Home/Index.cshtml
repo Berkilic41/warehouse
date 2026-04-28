@@ -1,0 +1,91 @@
+@model DashboardViewModel
+@{ ViewData["Title"] = "Dashboard"; }
+
+<h1 class="h3 mb-4">Dashboard</h1>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3 col-6">
+        <div class="stat-card p-4">
+            <div class="stat-label">Products</div>
+            <div class="stat-value">@Model.Stats.TotalProducts</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="stat-card p-4 @(Model.Stats.LowStockCount > 0 ? "border-start border-danger border-4" : "")">
+            <div class="stat-label">Low stock</div>
+            <div class="stat-value @(Model.Stats.LowStockCount > 0 ? "text-danger" : "")">@Model.Stats.LowStockCount</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="stat-card p-4">
+            <div class="stat-label">Suppliers</div>
+            <div class="stat-value">@Model.Stats.SupplierCount</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="stat-card p-4">
+            <div class="stat-label">Movements (30d)</div>
+            <div class="stat-value">@Model.Stats.MovementsLast30Days</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card-section">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <h5 class="mb-0">⚠️ Low stock alerts</h5>
+                <a asp-controller="Reports" asp-action="Stock" asp-route-lowStockOnly="true" class="small">View all →</a>
+            </div>
+            @if (!Model.LowStockItems.Any())
+            {
+                <p class="text-muted mb-0">All products are above their thresholds. 🎉</p>
+            }
+            else
+            {
+                <table class="table table-sm align-middle mb-0">
+                    <thead class="text-muted small">
+                        <tr><th>SKU</th><th>Product</th><th class="text-end">Stock</th><th class="text-end">Min</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in Model.LowStockItems.Take(10))
+                        {
+                            <tr>
+                                <td><code>@p.SKU</code></td>
+                                <td>@p.Name <span class="text-muted small">· @p.CategoryName</span></td>
+                                <td class="text-end"><span class="badge badge-low">@p.CurrentStock @p.Unit</span></td>
+                                <td class="text-end text-muted">@p.MinStockThreshold</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card-section">
+            <h5 class="mb-3">🔥 Top consumed (last 30 days)</h5>
+            @if (!Model.TopConsumed.Any())
+            {
+                <p class="text-muted mb-0">No outgoing movements yet.</p>
+            }
+            else
+            {
+                <ul class="list-unstyled mb-0">
+                    @foreach (var t in Model.TopConsumed)
+                    {
+                        <li class="d-flex justify-content-between border-bottom py-2">
+                            <span>@t.Name <span class="text-muted small">· @t.CategoryName</span></span>
+                            <strong>@t.TotalConsumed @t.Unit</strong>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="card-section mt-3">
+    <h5 class="mb-3">Stock value</h5>
+    <p class="h2 mb-0 text-primary">@Model.Stats.TotalStockValue.ToString("C")</p>
+</div>

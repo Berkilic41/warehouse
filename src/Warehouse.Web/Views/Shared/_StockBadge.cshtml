@@ -1,0 +1,4 @@
+@model Product
+<span class="@(Model.IsLowStock ? "badge-low" : "badge-good")">
+    @Model.CurrentStock @Model.Unit
+</span>

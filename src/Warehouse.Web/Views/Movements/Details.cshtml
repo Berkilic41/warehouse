@@ -1,0 +1,59 @@
+@model StockMovement
+@{ ViewData["Title"] = $"Movement #{Model.Id}"; }
+
+<a asp-action="Index" class="text-muted small text-decoration-none">← Back to movements</a>
+
+<div class="card-section mt-2">
+    <div class="d-flex justify-content-between align-items-start mb-3">
+        <div>
+            <h1 class="h4 mb-1">Movement #@Model.Id</h1>
+            <span class="badge @(Model.MovementType == "In" ? "bg-success" : Model.MovementType == "Out" ? "bg-warning" : "bg-secondary")">
+                @Model.MovementType
+            </span>
+            @if (!string.IsNullOrEmpty(Model.Reference))
+            {
+                <span class="text-muted ms-2"><code>@Model.Reference</code></span>
+            }
+        </div>
+        <div class="text-end text-muted small">
+            @Model.MovementDate.ToString("yyyy-MM-dd HH:mm") UTC<br />
+            by @Model.UserName
+        </div>
+    </div>
+
+    <dl class="row mb-0">
+        @if (!string.IsNullOrEmpty(Model.SupplierName))
+        {
+            <dt class="col-sm-3">Supplier</dt><dd class="col-sm-9">@Model.SupplierName</dd>
+        }
+        @if (!string.IsNullOrEmpty(Model.Reason))
+        {
+            <dt class="col-sm-3">Reason</dt><dd class="col-sm-9">@Model.Reason</dd>
+        }
+        @if (!string.IsNullOrEmpty(Model.Notes))
+        {
+            <dt class="col-sm-3">Notes</dt><dd class="col-sm-9">@Model.Notes</dd>
+        }
+    </dl>
+</div>
+
+<div class="card-section mt-3">
+    <h5 class="mb-3">Items</h5>
+    <table class="table mb-0">
+        <thead>
+            <tr><th>SKU</th><th>Product</th><th class="text-end">Quantity</th><th class="text-end">Unit Price</th><th class="text-end">Subtotal</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var i in Model.Items)
+            {
+                <tr>
+                    <td><code>@i.ProductSku</code></td>
+                    <td>@i.ProductName</td>
+                    <td class="text-end">@i.Quantity @i.Unit</td>
+                    <td class="text-end">@(i.UnitPrice?.ToString("C") ?? "—")</td>
+                    <td class="text-end">@(i.UnitPrice.HasValue ? (Math.Abs(i.Quantity) * i.UnitPrice.Value).ToString("C") : "—")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

@@ -1,0 +1,82 @@
+@model StockReportViewModel
+@{ ViewData["Title"] = "Stock Report"; }
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Stock Report</h1>
+    <button id="csv-export" class="btn btn-outline-success">📥 Export CSV</button>
+</div>
+
+<form method="get" class="card-section mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-4">
+            <label class="form-label small">Category</label>
+            <select name="categoryId" class="form-select">
+                <option value="">All categories</option>
+                @foreach (var c in Model.Categories)
+                {
+                    <option value="@c.Id" selected="@(Model.CategoryId == c.Id)">@c.Name</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-4">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="lso" name="lowStockOnly" value="true" checked="@Model.LowStockOnly" />
+                <label class="form-check-label" for="lso">Low stock only</label>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <button class="btn btn-primary w-100">Apply</button>
+        </div>
+    </div>
+</form>
+
+<div class="table-clean">
+    <table class="table mb-0 align-middle" id="stock-table">
+        <thead>
+            <tr>
+                <th>SKU</th><th>Name</th><th>Category</th>
+                <th class="text-end">Current</th><th class="text-end">Min</th>
+                <th class="text-end">Unit Price</th><th class="text-end">Stock Value</th><th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (!Model.Rows.Any())
+            {
+                <tr><td colspan="8" class="text-center text-muted py-5">No products match.</td></tr>
+            }
+            @foreach (var r in Model.Rows)
+            {
+                <tr>
+                    <td><code>@r.SKU</code></td>
+                    <td>@r.Name</td>
+                    <td class="text-muted">@r.CategoryName</td>
+                    <td class="text-end">@r.CurrentStock @r.Unit</td>
+                    <td class="text-end text-muted">@r.MinStockThreshold</td>
+                    <td class="text-end">@(r.UnitPrice?.ToString("C") ?? "—")</td>
+                    <td class="text-end">@r.StockValue.ToString("C")</td>
+                    <td>
+                        @if (r.IsLowStock)
+                        {
+                            <span class="badge-low">Low</span>
+                        }
+                        else
+                        {
+                            <span class="badge-good">OK</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+        <tfoot class="table-light">
+            <tr>
+                <th colspan="6" class="text-end">Total stock value:</th>
+                <th class="text-end">@Model.Rows.Sum(r => r.StockValue).ToString("C")</th>
+                <th></th>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+@section Scripts {
+    <script src="~/js/csv-export.js" asp-append-version="true"></script>
+}

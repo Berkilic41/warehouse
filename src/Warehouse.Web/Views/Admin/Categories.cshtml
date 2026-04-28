@@ -1,0 +1,40 @@
+@model IEnumerable<Category>
+@{ ViewData["Title"] = "Categories"; }
+
+<div class="row">
+    <div class="col-md-7">
+        <h1 class="h3 mb-3">Categories</h1>
+        <div class="table-clean">
+            <table class="table mb-0 align-middle">
+                <thead><tr><th>Name</th><th>Description</th><th class="text-end">Products</th></tr></thead>
+                <tbody>
+                    @foreach (var c in Model)
+                    {
+                        <tr>
+                            <td><strong>@c.Name</strong></td>
+                            <td class="text-muted">@c.Description</td>
+                            <td class="text-end">@c.ProductCount</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="col-md-5">
+        <div class="card-section">
+            <h5 class="mb-3">+ New category</h5>
+            <form asp-action="CreateCategory" method="post">
+                @Html.AntiForgeryToken()
+                <div class="mb-2">
+                    <label class="form-label">Name</label>
+                    <input name="name" class="form-control" required maxlength="100" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" class="form-control" rows="2" maxlength="500"></textarea>
+                </div>
+                <button class="btn btn-primary w-100">Create</button>
+            </form>
+        </div>
+    </div>
+</div>

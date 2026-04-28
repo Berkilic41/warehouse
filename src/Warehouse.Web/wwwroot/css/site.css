@@ -1,0 +1,29 @@
+html { font-size: 14px; }
+@media (min-width: 768px) { html { font-size: 15px; } }
+
+body { background: #f1f5f9; }
+
+.stat-card {
+  background: #fff;
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.04);
+}
+.stat-card .stat-label { color: #64748b; font-size: .85rem; text-transform: uppercase; letter-spacing: .05em; }
+.stat-card .stat-value { font-size: 2rem; font-weight: 700; }
+
+.table-clean { background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.04); }
+.table-clean thead { background: #f8fafc; }
+
+.badge-low  { background: #fee2e2; color: #991b1b; padding: .25em .5em; border-radius: 4px; font-size: .8em; }
+.badge-good { background: #dcfce7; color: #166534; padding: .25em .5em; border-radius: 4px; font-size: .8em; }
+
+.card-section {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,.04);
+}
+
+.movement-row { transition: background .1s; }
+.movement-row:hover { background: #f8fafc; }

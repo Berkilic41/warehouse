@@ -1,0 +1,38 @@
+@model LoginViewModel
+@{
+    ViewData["Title"] = "Sign in";
+    Layout = "_Layout";
+}
+
+<div class="row justify-content-center mt-5">
+    <div class="col-md-5">
+        <div class="card-section">
+            <h2 class="h4 mb-4 text-center">📦 Warehouse Sign in</h2>
+            <form asp-action="Login" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" asp-for="ReturnUrl" />
+                <div class="alert alert-danger" asp-validation-summary="ModelOnly"></div>
+                <div class="mb-3">
+                    <label asp-for="Email" class="form-label"></label>
+                    <input asp-for="Email" class="form-control" autocomplete="email" />
+                    <span asp-validation-for="Email" class="text-danger small"></span>
+                </div>
+                <div class="mb-3">
+                    <label asp-for="Password" class="form-label"></label>
+                    <input asp-for="Password" class="form-control" autocomplete="current-password" />
+                    <span asp-validation-for="Password" class="text-danger small"></span>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Sign in</button>
+            </form>
+            <hr />
+            <details class="text-muted small">
+                <summary>Demo credentials</summary>
+                <ul class="mb-0 mt-2 ps-3">
+                    <li>admin@warehouse.test / password123 (Admin)</li>
+                    <li>staff@warehouse.test / password123 (Staff)</li>
+                    <li>viewer@warehouse.test / password123 (Viewer)</li>
+                </ul>
+            </details>
+        </div>
+    </div>
+</div>
