@@ -1,6 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
+    <PackageReference Include="Serilog.AspNetCore" Version="8.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Warehouse.Service\Warehouse.Service.csproj" />
     <ProjectReference Include="..\Warehouse.Data\Warehouse.Data.csproj" />
   </ItemGroup>

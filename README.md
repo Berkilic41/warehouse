@@ -88,34 +88,132 @@ CRUD on individual rows uses inline parameterized SQL.
 
 ---
 
-## Setup
+## Prerequisites
 
-### 1. Database (one-time)
+- **.NET SDK 8.0+** — [dotnet.microsoft.com](https://dotnet.microsoft.com/download)
+- **SQL Server**: LocalDB (Visual Studio ile gelir) veya SQL Server Express 2022+
+- **sqlcmd** — SQL Server command-line tool
 
+Verify:
 ```bash
-sqlcmd -S "(localdb)\mssqllocaldb" -i Database/001_Schema.sql
-sqlcmd -S "(localdb)\mssqllocaldb" -i Database/002_StoredProcedures.sql
-sqlcmd -S "(localdb)\mssqllocaldb" -i Database/003_SeedData.sql
+dotnet --version   # 8.0.x veya üstü
+sqlcmd -?          # SQL Server araçları yüklü mü?
 ```
 
-### 2. Run
+`sqlcmd` bulunamazsa PATH'e ekle: `C:\Program Files\Microsoft SQL Server\150\Tools\Binn` (sürüm numarasını ayarla).
+
+---
+
+## Getting Started
+
+### 1. Clone
+
+```bash
+git clone https://github.com/your-username/Warehouse.git
+cd Warehouse
+```
+
+### 2. Veritabanı oluştur
+
+**LocalDB için:**
+```bash
+sqlcmd -S "(localdb)\mssqllocaldb" -i Database\001_Schema.sql
+sqlcmd -S "(localdb)\mssqllocaldb" -i Database\002_StoredProcedures.sql
+sqlcmd -S "(localdb)\mssqllocaldb" -i Database\003_SeedData.sql
+```
+
+**SQL Server Express için:**
+```bash
+sqlcmd -S ".\SQLEXPRESS" -i Database\001_Schema.sql
+sqlcmd -S ".\SQLEXPRESS" -i Database\002_StoredProcedures.sql
+sqlcmd -S ".\SQLEXPRESS" -i Database\003_SeedData.sql
+```
+
+Doğrulama:
+```bash
+sqlcmd -S "(localdb)\mssqllocaldb" -Q "SELECT name FROM sys.databases WHERE name='WarehouseDb';"
+```
+
+### 3. Connection string güncelle (gerekirse)
+
+`src/Warehouse.Web/appsettings.json`:
+```json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=WarehouseDb;Integrated Security=true;TrustServerCertificate=true;"
+  }
+}
+```
+
+### 4. Çalıştır
 
 ```bash
 cd src/Warehouse.Web
+dotnet restore
 dotnet run
 ```
 
-App opens on `http://localhost:5028` (or whichever port `launchSettings.json` picks).
+HTTP: `http://localhost:5028`
 
-### 3. Demo accounts
+### Demo accounts
 
 All seed users have password **`password123`**:
 
-| Email | Role | Notes |
+| Email | Role | Capabilities |
 |---|---|---|
-| `admin@warehouse.test`  | Admin  | Full access |
-| `staff@warehouse.test`  | Staff  | Can record movements, manage products/suppliers |
-| `viewer@warehouse.test` | Viewer | Read-only |
+| `admin@warehouse.test`  | Admin  | Full access — users, categories, products, suppliers, movements |
+| `staff@warehouse.test`  | Staff  | Create/edit products & suppliers, record stock movements |
+| `viewer@warehouse.test` | Viewer | **Read-only** — view dashboard, products, suppliers, reports; export CSV |
+
+### Viewer Role (Read-Only)
+
+The Viewer role is enforced via `[Authorize(Roles = "Admin,Staff")]` on all write operations. Viewers **can**:
+- View dashboard KPIs and low-stock alerts
+- Browse products, suppliers, movement history
+- View stock reports and top-consumed lists, export CSV
+
+Viewers **cannot** create, edit, delete, or manage anything.
+
+---
+
+## Environment Variables
+
+Override connection string via environment variable (CI/CD, Docker):
+
+```bash
+# PowerShell
+$env:ConnectionStrings__DefaultConnection = "Server=...;Database=WarehouseDb;..."
+dotnet run
+```
+
+---
+
+## CI/CD
+
+GitHub Actions workflow at `.github/workflows/dotnet.yml` runs on every push:
+- **Build** → **Test** → **Vulnerability Scan** (PRs) → **Publish artifact** (main only)
+
+Enable by pushing `.github/` to your repository.
+
+---
+
+## Troubleshooting
+
+**sqlcmd not found:** Add `C:\Program Files\Microsoft SQL Server\150\Tools\Binn` to PATH and restart terminal.
+
+**Port conflict:**
+```bash
+netstat -ano | findstr :5028
+taskkill /PID <PID> /F
+```
+
+**DB connection fails:** Verify server name in `appsettings.json` and that SQL Server service is running.
+
+**Demo login fails:** Verify seed data:
+```bash
+sqlcmd -S "(localdb)\mssqllocaldb" -d WarehouseDb -Q "SELECT COUNT(*) FROM Users;"
+# Should return 3. If not, re-run Database\003_SeedData.sql
+```
 
 ---
 

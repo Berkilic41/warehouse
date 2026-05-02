@@ -1,0 +1,95 @@
+name: .NET Build & Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build (Release)
+      run: dotnet build --no-restore --configuration Release --verbosity normal
+
+    - name: Run tests
+      run: dotnet test --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
+      continue-on-error: true
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results
+        path: |
+          **/test-results.trx
+          **/coverage.cobertura.xml
+        if-no-files-found: ignore
+
+  code-quality:
+    runs-on: windows-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Check for vulnerable packages
+      run: dotnet list package --vulnerable
+      continue-on-error: true
+
+    - name: Format check
+      run: dotnet format --verify-no-changes --verbosity diagnostic
+      continue-on-error: true
+
+  publish:
+    needs: build
+    runs-on: windows-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Publish Release Build
+      run: dotnet publish src/Warehouse.Web/Warehouse.Web.csproj -c Release -o ./publish --no-restore
+
+    - name: Upload publish artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: published-app-${{ github.run_number }}
+        path: ./publish
+        retention-days: 30

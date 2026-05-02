@@ -33,29 +33,44 @@ public class MovementRepository : IMovementRepository
                 movementId = (int)(await cmd.ExecuteScalarAsync())!;
             }
 
-            foreach (var item in m.Items)
+            // Pre-compute deltas for all items
+            var deltas = m.Items.Select(item =>
             {
-                // For stock impact: In = +qty, Out = -qty, Adjustment = signed qty as entered
                 int delta = m.MovementType switch
                 {
-                    "In" => Math.Abs(item.Quantity),
+                    "In"  => Math.Abs(item.Quantity),
                     "Out" => -Math.Abs(item.Quantity),
-                    _ => item.Quantity
+                    _     => item.Quantity
                 };
                 int storedQty = m.MovementType == "Out" ? -Math.Abs(item.Quantity) : delta;
+                return (item, delta, storedQty);
+            }).ToList();
 
-                using (var ins = new SqlCommand(
-                    "INSERT INTO MovementItems (MovementId, ProductId, Quantity, UnitPrice) VALUES (@M, @P, @Q, @U)", conn, tx))
+            // Batch INSERT MovementItems — one round-trip instead of N
+            if (deltas.Count > 0)
+            {
+                var valueParts  = new List<string>();
+                var batchInsert = new SqlCommand { Connection = conn, Transaction = tx };
+                for (int i = 0; i < deltas.Count; i++)
                 {
-                    ins.Parameters.AddWithValue("@M", movementId);
-                    ins.Parameters.AddWithValue("@P", item.ProductId);
-                    ins.Parameters.AddWithValue("@Q", storedQty);
-                    ins.Parameters.AddWithValue("@U", (object?)item.UnitPrice ?? DBNull.Value);
-                    await ins.ExecuteNonQueryAsync();
+                    var (it, _, sq) = deltas[i];
+                    valueParts.Add($"(@M{i}, @P{i}, @Q{i}, @U{i})");
+                    batchInsert.Parameters.AddWithValue($"@M{i}", movementId);
+                    batchInsert.Parameters.AddWithValue($"@P{i}", it.ProductId);
+                    batchInsert.Parameters.AddWithValue($"@Q{i}", sq);
+                    batchInsert.Parameters.AddWithValue($"@U{i}", (object?)it.UnitPrice ?? DBNull.Value);
                 }
+                batchInsert.CommandText =
+                    $"INSERT INTO MovementItems (MovementId, ProductId, Quantity, UnitPrice) VALUES {string.Join(", ", valueParts)}";
+                await batchInsert.ExecuteNonQueryAsync();
+            }
 
+            // UPDATE stock with UPDLOCK — prevents race condition on concurrent movements
+            foreach (var (item, delta, _) in deltas)
+            {
                 using var upd = new SqlCommand(
-                    "UPDATE Products SET CurrentStock = CurrentStock + @D WHERE Id = @P", conn, tx);
+                    "UPDATE Products WITH (UPDLOCK) SET CurrentStock = CurrentStock + @D WHERE Id = @P",
+                    conn, tx);
                 upd.Parameters.AddWithValue("@D", delta);
                 upd.Parameters.AddWithValue("@P", item.ProductId);
                 await upd.ExecuteNonQueryAsync();
