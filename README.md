@@ -1,6 +1,24 @@
 # Warehouse & Inventory Management System
 
+[![CI](https://github.com/Berkilic41/warehouse/actions/workflows/dotnet.yml/badge.svg)](https://github.com/Berkilic41/warehouse/actions/workflows/dotnet.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![.NET 8](https://img.shields.io/badge/.NET-8.0-512BD4)](https://dotnet.microsoft.com/)
+
 Multi-user warehouse management built with ASP.NET Core MVC (.NET 8), SQL Server with **stored procedures**, and ADO.NET (no ORM). Three-layer architecture: `Warehouse.Data` → `Warehouse.Service` → `Warehouse.Web`.
+
+## Why I Built This
+
+Inventory management is a core concern for any business that handles physical goods. I built this system to model the real challenges: **concurrent stock movements, multi-role access control, and aggregate reporting** over large transaction histories. By routing complex queries (dashboard KPIs, stock reports, top-consumed lists) through dedicated stored procedures, and handling stock updates inside atomic transactions with `UPDLOCK`, I practiced the same patterns used in production ERP and logistics backends.
+
+## 🔑 Technical Highlights
+
+- **Atomic stock movements** — Every `StockMovement` (In/Out/Adjustment) updates `MovementItems` and `Products.CurrentStock` in a single transaction; `UPDLOCK` on stock rows prevents race conditions on concurrent out-movements
+- **Batch INSERT** — Multi-item movements use a single batched `VALUES` statement instead of N round-trips (reduced from 200 DB calls to 2 for a 100-item movement)
+- **Stored-procedure reporting** — `sp_GetDashboardStats`, `sp_GetStockReport`, `sp_GetMovementHistory`, `sp_GetTopConsumed` keep aggregate queries in T-SQL where they perform best
+- **Role-based access** — `[Authorize(Roles = "Admin,Staff")]` on all write operations; Viewer role enforced consistently across all controllers
+- **47+ unit tests** — MovementService (race conditions, validation), ProductService (SKU uniqueness, category checks), AuthService (xUnit + Moq)
+- **Correlation IDs** — Every request gets `X-Correlation-ID` injected into Serilog's `LogContext`
+- **Containerized** — Multi-stage Dockerfile + docker-compose with SQL Server 2022 healthcheck
 
 ---
 
@@ -91,16 +109,16 @@ CRUD on individual rows uses inline parameterized SQL.
 ## Prerequisites
 
 - **.NET SDK 8.0+** — [dotnet.microsoft.com](https://dotnet.microsoft.com/download)
-- **SQL Server**: LocalDB (Visual Studio ile gelir) veya SQL Server Express 2022+
+- **SQL Server**: LocalDB (included with Visual Studio) or SQL Server Express 2022+
 - **sqlcmd** — SQL Server command-line tool
 
 Verify:
 ```bash
-dotnet --version   # 8.0.x veya üstü
-sqlcmd -?          # SQL Server araçları yüklü mü?
+dotnet --version   # 8.0.x or later
+sqlcmd -?          # SQL Server tools installed?
 ```
 
-`sqlcmd` bulunamazsa PATH'e ekle: `C:\Program Files\Microsoft SQL Server\150\Tools\Binn` (sürüm numarasını ayarla).
+If `sqlcmd` is not found, add to PATH: `C:\Program Files\Microsoft SQL Server\150\Tools\Binn` (adjust version number).
 
 ---
 
@@ -113,30 +131,30 @@ git clone https://github.com/your-username/Warehouse.git
 cd Warehouse
 ```
 
-### 2. Veritabanı oluştur
+### 2. Create the database
 
-**LocalDB için:**
+**LocalDB:**
 ```bash
 sqlcmd -S "(localdb)\mssqllocaldb" -i Database\001_Schema.sql
 sqlcmd -S "(localdb)\mssqllocaldb" -i Database\002_StoredProcedures.sql
 sqlcmd -S "(localdb)\mssqllocaldb" -i Database\003_SeedData.sql
 ```
 
-**SQL Server Express için:**
+**SQL Server Express:**
 ```bash
 sqlcmd -S ".\SQLEXPRESS" -i Database\001_Schema.sql
 sqlcmd -S ".\SQLEXPRESS" -i Database\002_StoredProcedures.sql
 sqlcmd -S ".\SQLEXPRESS" -i Database\003_SeedData.sql
 ```
 
-Doğrulama:
+Verify:
 ```bash
 sqlcmd -S "(localdb)\mssqllocaldb" -Q "SELECT name FROM sys.databases WHERE name='WarehouseDb';"
 ```
 
-### 3. Connection string güncelle (gerekirse)
+### 3. Update connection string (if needed)
 
-`src/Warehouse.Web/appsettings.json`:
+`src/Warehouse.Web/appsettings.Development.json`:
 ```json
 {
   "ConnectionStrings": {
@@ -145,7 +163,9 @@ sqlcmd -S "(localdb)\mssqllocaldb" -Q "SELECT name FROM sys.databases WHERE name
 }
 ```
 
-### 4. Çalıştır
+For production, set via environment variable: `ConnectionStrings__DefaultConnection`
+
+### 4. Run
 
 ```bash
 cd src/Warehouse.Web
@@ -251,8 +271,16 @@ sqlcmd -S "(localdb)\mssqllocaldb" -d WarehouseDb -Q "SELECT COUNT(*) FROM Users
 ## Security
 
 - Passwords hashed with **HMAC-SHA512** + per-user 64-byte salt
-- Cookie auth, HTTP-only, 14-day sliding expiration
+- Cookie auth — `HttpOnly`, `Secure`, `SameSite=Strict`, 8-hour session
 - Anti-forgery tokens on every state-changing form
 - All SQL parameterized — no string concatenation
-- Stock-out movements validate availability before commit
+- Stock-out movements validate availability before commit (with `UPDLOCK` to prevent race conditions)
 - Movements + stock updates wrapped in a single SQL transaction
+- Security headers: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Content-Security-Policy`, `Referrer-Policy`
+- Rate limiting on login endpoint (10 requests/min per IP)
+
+---
+
+## License
+
+MIT — see [LICENSE](LICENSE)
