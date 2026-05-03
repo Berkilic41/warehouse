@@ -35,7 +35,7 @@ jobs:
 
     - name: Upload test results
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: test-results
         path: |
@@ -95,7 +95,7 @@ jobs:
       run: dotnet publish src/Warehouse.Web/Warehouse.Web.csproj -c Release -o ./publish --no-restore
 
     - name: Upload publish artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: published-app-${{ github.run_number }}
         path: ./publish
